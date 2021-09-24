@@ -43,7 +43,7 @@ class Trainer(nn.Module):
         
         loss.backward()
         self.optimizer.step()
-        self.scheduler.step(opt.cur_step) # modify this line if plateau scheduler is adopted
+        self.scheduler.step_update(opt.cur_step) # modify this line if plateau scheduler is adopted
 
         return loss.item(), targets.shape[0]
         
@@ -67,7 +67,7 @@ def build_model(opt):
     if 0 == opt.local_rank:
         logging.info('Model is built!')
         if opt.use_tb:
-            opt.writer.add_graph(net, torch.randn(3, opt.img_size, opt.img_size))
+            opt.writer.add_graph(net, torch.randn(2, 3, opt.img_size, opt.img_size))
     return net
 
 
@@ -79,5 +79,3 @@ if __name__=='__main__':
     inputs = torch.randn(2, 3, 224, 224)
     net = Model()
     outputs = net(inputs)
-    from torchsummary import summary
-    summary(net, (3, 224, 224), device='cpu')

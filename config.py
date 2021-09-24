@@ -52,6 +52,9 @@ def get_config():
                         default=5e-6)
     parser.add_argument('--clip_grad', type=float,
                         default=5.0)
+    parser.add_argument('--adjust_lr', type=bool,
+                        default=False,
+                        help='Adjust lr according to world size')
     
 
     # Scheduler settings

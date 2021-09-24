@@ -1,5 +1,5 @@
 '''
-Written by Telephone
+Written by Telephone1024
 2021/09/24
 # This part needs no modification if not necessary #
 '''
@@ -57,7 +57,10 @@ def train(opt):
 
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.val_interval:        
             acc, loss = validate(opt, trainer, eval_loader)
-            # logging.info('Validation Acc: %.5f'%(acc))
+            logging.info('Validation Acc: %.4f, Loss: %.4f'%(acc, loss))
+            if opt.use_tb:
+                opt.writer.add_scaler('eval_acc_avg', acc, epoch)
+                opt.writer.add_scaler('eval_loss_avg', loss, epoch)
 
             if acc >= opt.best_acc:
                 if acc == opt.best_acc:
@@ -92,10 +95,10 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
         if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
-            curr_lr = trainer.optimizer.params_group[0]['lr']
+            curr_lr = trainer.optimizer.param_groups[0]['lr']
             logging.info(
-                f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:04d}/{len(data_loader):04d}]\t'
-                f'lr {curr_lr:.5f}\t'
+                f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t'
+                f'lr {curr_lr:.4e}\t'
                 f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'mem {memory_used:.0f}MB')
             if opt.use_tb:
@@ -121,7 +124,7 @@ def validate(opt, trainer, data_loader):
             logging.info(
                 f'Test: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
-                f'Acc {acc_meter.val:.3f} ({acc_meter.avg:.3f})\t'
+                f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})\t'
                 f'Mem {memory_used:.0f}MB')
             if opt.use_tb:
                 opt.writer.add_scalar('eval_loss', loss_meter.val, opt.cur_step)
@@ -141,14 +144,15 @@ if __name__=='__main__':
 
     cudnn.benchmark = True
 
-    opt = lr_adjust(opt)
+    if opt.adjust_lr:
+        opt = lr_adjust(opt)
 
     if 0 == local_rank:
         import time
         saved_path = os.path.join(opt.saved_path, time.strftime('%m-%d-%H:%M', time.localtime()))
         os.makedirs(saved_path, exist_ok=True)
         logging.basicConfig(
-            filename=os.path.join(saved_path, 'running.log'),
+            filename=os.path.join(saved_path, 'run.log'),
             filemode='w',
             format='%(asctime)s: %(levelname)s: [%(filename)s:%(lineno)d]: %(message)s',
             level=logging.INFO
