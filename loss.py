@@ -15,3 +15,7 @@ class Loss(nn.Module):
 
 def build_criterion(opt):
     return Loss()
+
+
+if __name__=='__main__':
+    pass

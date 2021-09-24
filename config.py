@@ -16,8 +16,17 @@ def get_config():
     parser.add_argument('--num_workers', type=int,
                         default=16,
                         help='Number of data loading threads')
-    
+    parser.add_argument('--pin_memory', type=bool,
+                        default=True,
+                        help='Set for more efficient (sometimes) transfer to GPU.')
+    # # Data augment setting
+    # TODO
+
     # Model settings
+    parser.add_argument('--model_name', type=str,
+                        default='model')
+    parser.add_argument('--num_classes', type=int,
+                        default=2)
     parser.add_argument('--resume', type=str,
                         # default='',
                         help='Checkpoint to resume')
@@ -57,9 +66,11 @@ def get_config():
     parser.add_argument('--optim', type=str, choices=['sgd', 'adamw'],
                         default='adamw')
     parser.add_argument('--eps', type=float,
-                        default=1e-8)
+                        default=1e-8,
+                        help='Optimizer Epsilon')
     parser.add_argument('--betas', type=tuple,
-                        default=(0.9, 0.999))
+                        default=(0.9, 0.999),
+                        help='Optimizer Betas')
     parser.add_argument('--momentum', type=float,
                         default=0.9,
                         help='SGD momentum')

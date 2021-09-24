@@ -1,3 +1,3 @@
-# Training_tamplate
-This is a common ML training_tamplate for myself
+# Training_template
+This is a common ML training template for myself
 
