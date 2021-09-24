@@ -44,10 +44,10 @@ def train(opt):
     for epoch in range(opt.num_epochs):
 
         train_one_epoch(opt, epoch, trainer, train_loader)
-        if opt.local_rank==0 and ((epoch+1)%opt.save_interval == 0):
+        if 0 == opt.local_rank and 0 == (epoch+1)%opt.save_interval:
             save_checkpoint(trainer.model, opt, epoch+1)
 
-        if opt.local_rank==0 and ((epoch+1)%opt.val_interval == 0):        
+        if 0 == opt.local_rank and 0 == (epoch+1)%opt.val_interval:        
             acc, loss = validate(opt, trainer, eval_loader)
             # logging.info('Validation Acc: %.5f'%(acc))
 
