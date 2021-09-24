@@ -1,3 +1,10 @@
+'''
+Written by Telephone
+2021/09/24
+# This part needs no modification if not necessary #
+'''
+
+
 import logging
 import os
 import torch
@@ -14,13 +21,14 @@ from loss import build_criterion
 from dataset import build_loader
 from optimizer import build_optimizer
 from scheduler import build_scheduler
-from utils import save_checkpoint
+from utils import lr_adjust, save_checkpoint
 
 
 def train(opt):
     model = build_model(opt)
     if opt.resume:
         model.load_state_dict(torch.load(opt.resume, map_location='cpu'), strict=False)
+        # dist.barrier()
         if 0 == opt.local_rank:
             logging.info('Load pretrained weight from %s'%(opt.resume))
 
@@ -114,9 +122,18 @@ def validate(opt, trainer, data_loader):
 
 
 if __name__=='__main__':
-    local_rank = dist.get_rank()
+    local_rank = int(os.environ['LOCAL_RANK'])
     opt = get_config()
     opt.local_rank = local_rank
+
+    dist.init_process_group(backend='nccl')
+    # dist.barrier()
+    torch.cuda.set_device(local_rank)
+
+    cudnn.benchmark = True
+
+    opt = lr_adjust(opt)
+
     if 0 == local_rank:
         import time
         saved_path = os.path.join(opt.saved_path, time.strftime('%m-%d-%H:%M', time.localtime()))
@@ -130,20 +147,5 @@ if __name__=='__main__':
         os.system('cp config.py %s'%(saved_path))
         logging.info('Training config saved to %s'%(saved_path))
         opt.saved_path = saved_path
-
-    dist.init_process_group(backend='nccl')
-    # dist.barrier()
-    torch.cuda.set_device(local_rank)
-
-    cudnn.benchmark = True
-
-    # linear scale the learning rate according to total batch size, may not be optimal
-    linear_scaled_lr = opt.lr * opt.batch_size * dist.get_world_size() / 512.0
-    linear_scaled_warmup_lr = opt.warmup_lr * opt.batch_size * dist.get_world_size() / 512.0
-    linear_scaled_min_lr = opt.min_lr * opt.batch_size * dist.get_world_size() / 512.0
-
-    opt.lr = linear_scaled_lr
-    opt.warmup_lr = linear_scaled_warmup_lr
-    opt.min_lr = linear_scaled_min_lr
 
     train(opt)

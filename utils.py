@@ -23,3 +23,16 @@ def reduce_tensor(tensor):
     dist.all_reduce(rt, op=dist.ReduceOp.SUM)
     rt /= dist.get_world_size()
     return rt
+
+
+def lr_adjust(opt):
+    # linear scale the learning rate according to total batch size, may not be optimal
+    linear_scaled_lr = opt.lr * opt.batch_size * dist.get_world_size() / 512.0
+    linear_scaled_warmup_lr = opt.warmup_lr * opt.batch_size * dist.get_world_size() / 512.0
+    linear_scaled_min_lr = opt.min_lr * opt.batch_size * dist.get_world_size() / 512.0
+
+    opt.lr = linear_scaled_lr
+    opt.warmup_lr = linear_scaled_warmup_lr
+    opt.min_lr = linear_scaled_min_lr
+
+    return opt
