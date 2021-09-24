@@ -89,6 +89,9 @@ def get_config():
     parser.add_argument('--saved_path', type=str,
                         default='./logs/',
                         help='Path to save checkpoints and logs')
+    parser.add_argument('--use_tb', type=bool,
+                        default=True,
+                        help='Whether to use tensorboard')
     parser.add_argument('--val_interval', type=int,
                         default=1,
                         help='Validate interval epoch number')

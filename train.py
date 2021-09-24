@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
+from torch.utils.tensorboard import SummaryWriter
 from timm.utils import accuracy, AverageMeter
 
 # Implement your training settinga and model(s) in these files
@@ -72,6 +73,8 @@ def train(opt):
     
     if 0 == opt.local_rank:
         logging.info('Training Over!')
+        if opt.use_tb:
+            opt.writer.close()
 
 
 def train_one_epoch(opt, epoch, trainer, data_loader):
@@ -87,7 +90,7 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
         loss_meter.update(loss, n)
 
-        if 0 == (iter+1)%opt.print_interval and 0 == opt.local_rank:
+        if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             curr_lr = trainer.optimizer.params_group[0]['lr']
             logging.info(
@@ -95,6 +98,9 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
                 f'lr {curr_lr:.5f}\t'
                 f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'mem {memory_used:.0f}MB')
+            if opt.use_tb:
+                opt.writer.add_scalar('lr', curr_lr, opt.cur_step)
+                opt.writer.add_scalar('train_loss', loss_meter.val, opt.cur_step)
 
 
 @torch.no_grad()
@@ -110,13 +116,16 @@ def validate(opt, trainer, data_loader):
         acc_meter.update(acc, n)
         loss_meter.update(loss, n)
 
-        if 0 == (iter+1)%opt.print_interval and 0 == opt.local_rank:
+        if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             logging.info(
                 f'Test: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'Acc {acc_meter.val:.3f} ({acc_meter.avg:.3f})\t'
                 f'Mem {memory_used:.0f}MB')
+            if opt.use_tb:
+                opt.writer.add_scalar('eval_loss', loss_meter.val, opt.cur_step)
+                opt.writer.add_scalar('eval_acc', acc_meter.val, opt.cur_step)
 
     return acc_meter.avg, loss_meter.avg
 
@@ -147,5 +156,8 @@ if __name__=='__main__':
         os.system('cp config.py %s'%(saved_path))
         logging.info('Training config saved to %s'%(saved_path))
         opt.saved_path = saved_path
+        if opt.use_tb:
+            opt.writer = SummaryWriter(os.path.join(opt.saved_path, 'tensorboard'))         
+
 
     train(opt)

@@ -1,3 +1,5 @@
+import logging
+import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -60,7 +62,13 @@ class Trainer(nn.Module):
 
 
 def build_model(opt):
-    return Model()
+    net = Model()
+    # net can be any other models you want
+    if 0 == opt.local_rank:
+        logging.info('Model is built!')
+        if opt.use_tb:
+            opt.writer.add_graph(net, torch.randn(3, opt.img_size, opt.img_size))
+    return net
 
 
 def build_trainer(model, criterion, optimizer, scheduler, opt):
