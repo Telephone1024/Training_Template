@@ -8,20 +8,11 @@ def get_config():
                         default=8,
                         help='batch size on a single GPU')
     parser.add_argument('--data_path', type=str,
-                        default='/mnt2/tlf/ff++/aligned_face/',
+                        default='',
                         help='Path to dataset')
-    parser.add_argument('--img_quality', type=str, choices=['raw, HQ, LQ'],
-                        default='LQ',
-                        help='Input image quality')
     parser.add_argument('--img_size', type=int,
                         default=224,
                         help='Input image size')
-    parser.add_argument('--clip_len', type=int,
-                        default=4,
-                        help='Frame number of input video clip')
-    parser.add_argument('--motion_type', type=str, choices=['res, flow, none'],
-                        default='none',
-                        help='The motion type used for video classification')
     parser.add_argument('--num_workers', type=int,
                         default=16,
                         help='Number of data loading threads')
@@ -30,12 +21,6 @@ def get_config():
     parser.add_argument('--resume', type=str,
                         # default='',
                         help='Checkpoint to resume')
-    parser.add_argument('--cls_type', type=str, choices=['frame', 'video'],
-                        default='frame',
-                        help='Classification type')
-    parser.add_argument('--use_contrast', type=bool,
-                        default=True,
-                        help='True if you want to apply contrast branch')
     
     # Training settings
     parser.add_argument('--train_stage', type=str, choices=['train', 'finetune'],
