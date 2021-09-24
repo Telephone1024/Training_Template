@@ -17,10 +17,11 @@ def build_optimizer(opt, model):
             betas=opt.betas,
             lr=opt.lr,
             weight_decay=opt.weight_decay)
+    
     return optimizer
 
 
-# Implement your parameters setting here
+# Implement your parameters settings here
 # Set different learning rates and weight decays for parameters in the model according to the config
 # Return the list of parameter dicts
 def set_params(model, opt):

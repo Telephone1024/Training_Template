@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from timm.utils import accuracy, AverageMeter
 
+
 # Implement your model here
 class Model(nn.Module):
     def __init__(self):
@@ -40,7 +41,7 @@ class Trainer(nn.Module):
         
         loss.backward()
         self.optimizer.step()
-        self.scheduler.step(opt.cur_step)
+        self.scheduler.step(opt.cur_step) # modify this line if plateau scheduler is adopted
 
         return loss.item(), targets.shape[0]
         

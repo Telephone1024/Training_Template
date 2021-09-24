@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
@@ -8,7 +7,7 @@ import torch.distributed as dist
 
 from timm.utils import accuracy, AverageMeter
 
-# Implement your training set and model in these files
+# Implement your training settinga and model(s) in these files
 from config import get_config
 from models import build_model, build_trainer
 from loss import build_criterion
@@ -82,8 +81,10 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
         if 0 == (iter+1)%opt.print_interval and 0 == opt.local_rank:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
+            curr_lr = trainer.optimizer.params_group[0]['lr']
             logging.info(
-                f'Train: [{epoch+1}/{opt.num_epochs}][{iter+1}/{len(data_loader)}]\t'
+                f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:04d}/{len(data_loader):04d}]\t'
+                f'lr {curr_lr:.5f}\t'
                 f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'mem {memory_used:.0f}MB')
 
@@ -104,16 +105,16 @@ def validate(opt, trainer, data_loader):
         if 0 == (iter+1)%opt.print_interval and 0 == opt.local_rank:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             logging.info(
-                f'Test: [{iter+1}/{len(data_loader)}]\t'
+                f'Test: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
-                f'Acc@1 {acc_meter.val:.3f} ({acc_meter.avg:.3f})\t'
+                f'Acc {acc_meter.val:.3f} ({acc_meter.avg:.3f})\t'
                 f'Mem {memory_used:.0f}MB')
 
     return acc_meter.avg, loss_meter.avg
 
 
 if __name__=='__main__':
-    local_rank = int(os.environ['LOCAL_RANK'])
+    local_rank = dist.get_rank()
     opt = get_config()
     opt.local_rank = local_rank
     if 0 == local_rank:

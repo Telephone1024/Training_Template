@@ -3,6 +3,7 @@ import argparse
 def get_config():
     parser = argparse.ArgumentParser()
 
+    
     # Data settings
     parser.add_argument('--batch_size', type=int,
                         default=8,
@@ -22,6 +23,7 @@ def get_config():
     # # Data augment setting
     # TODO
 
+    
     # Model settings
     parser.add_argument('--model_name', type=str,
                         default='model')
@@ -31,6 +33,7 @@ def get_config():
                         # default='',
                         help='Checkpoint to resume')
     
+
     # Training settings
     parser.add_argument('--train_stage', type=str, choices=['train', 'finetune'],
                         default='train',
@@ -50,18 +53,24 @@ def get_config():
     parser.add_argument('--clip_grad', type=float,
                         default=5.0)
     
+
     # Scheduler settings
-    parser.add_argument('--sche_type', type=str, choices=['cosine', 'step'],
+    parser.add_argument('--sche_type', type=str, choices=['cosine', 'step', 'plateau'],
                         default='cosine',
                         help='Learning rate scheduler for training')
     # # For step scheduler
     parser.add_argument('--decay_epochs', type=int,
                         default=2,
                         help='Epoch interval to decay LR, used in StepLRScheduler')
+    # # For plateau scheduler
+    parser.add_argument('--patience_epochs', type=int,
+                        default=5,
+                        help='Epoch interval to decay LR, used in PlateauLRScheduler')
     parser.add_argument('--decay_rate', type=float,
                         default=0.9,
-                        help='LR decay rate, used in StepLRScheduler')
+                        help='LR decay rate, used in StepLRScheduler or PlateauLRScheduler')
     
+
     # Optimizer settings
     parser.add_argument('--optim', type=str, choices=['sgd', 'adamw'],
                         default='adamw')
@@ -75,6 +84,7 @@ def get_config():
                         default=0.9,
                         help='SGD momentum')
     
+
     # Other settings
     parser.add_argument('--saved_path', type=str,
                         default='./logs/',

@@ -22,5 +22,15 @@ def build_scheduler(opt, optimizer, iters_per_epoch):
             warmup_t=opt.num_warmup_epochs * iters_per_epoch,
             t_in_epochs=False
         )
+    elif 'plateau' == opt.sche_type:
+        scheduler = sche.PlateauLRScheduler(
+            optimizer=optimizer,
+            decay_rate=opt.decay_rate,
+            patience_t=opt.patience,
+            warmup_t=opt.num_warmup_epochs * iters_per_epoch,
+            warmup_lr_init=opt.warmup_lr,
+            lr_min=opt.min_lr,
+            mode='min',
+        )
 
     return scheduler

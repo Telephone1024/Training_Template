@@ -25,7 +25,7 @@ def build_loader(opt):
     train_set = Dataset()
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_set)
     train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=False, 
-                            drop_last=True, num_workers=opt.num_workers, 
+                            drop_last=False, num_workers=opt.num_workers, 
                             sampler=train_sampler, pin_memory=opt.pin_memory)
 
     eval_loader = None
@@ -36,8 +36,6 @@ def build_loader(opt):
                                 num_workers=opt.num_workers, pin_memory=opt.pin_memory)
     
     return train_loader, eval_loader
-
-
 
 
 if __name__ == '__main__':
