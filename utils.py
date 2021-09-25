@@ -14,7 +14,7 @@ def save_checkpoint(model, opt, epoch, is_best=False):
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_best.pth'))
         logging.warning('BEST MODEL IS SAVED!!! CURRENT ACCURACY IS: %.5f'%(opt.best_acc))
     else:
-        torch.save(params, os.path.join(opt.saved_path, 'ckpt_epoch_%4d.pth'%(epoch)))
+        torch.save(params, os.path.join(opt.saved_path, 'ckpt_epoch_%03d.pth'%(epoch)))
         logging.info('model is saved!')
 
 
@@ -27,9 +27,9 @@ def reduce_tensor(tensor):
 
 def lr_adjust(opt):
     # linear scale the learning rate according to total batch size, may not be optimal
-    linear_scaled_lr = opt.lr * opt.batch_size * dist.get_world_size() / 512.0
-    linear_scaled_warmup_lr = opt.warmup_lr * opt.batch_size * dist.get_world_size() / 512.0
-    linear_scaled_min_lr = opt.min_lr * opt.batch_size * dist.get_world_size() / 512.0
+    linear_scaled_lr = opt.lr * opt.batch_size * dist.get_world_size() / opt.total_batch_size
+    linear_scaled_warmup_lr = opt.warmup_lr * opt.batch_size * dist.get_world_size() / opt.total_batch_size
+    linear_scaled_min_lr = opt.min_lr * opt.batch_size * dist.get_world_size() / opt.total_batch_size
 
     opt.lr = linear_scaled_lr
     opt.warmup_lr = linear_scaled_warmup_lr

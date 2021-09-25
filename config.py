@@ -7,7 +7,10 @@ def get_config():
     # Data settings
     parser.add_argument('--batch_size', type=int,
                         default=8,
-                        help='batch size on a single GPU')
+                        help='Batch size on a single GPU')
+    parser.add_argument('--total_batch_size', type=int,
+                        default=32,
+                        help='Sum of batch size on all GPUs')
     parser.add_argument('--data_path', type=str,
                         default='',
                         help='Path to dataset')
@@ -54,7 +57,7 @@ def get_config():
                         default=5.0)
     parser.add_argument('--adjust_lr', type=bool,
                         default=False,
-                        help='Adjust lr according to world size')
+                        help='Adjust lr according to world size, work with total batch size')
     
 
     # Scheduler settings

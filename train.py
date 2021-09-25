@@ -59,8 +59,8 @@ def train(opt):
             acc, loss = validate(opt, trainer, eval_loader)
             logging.info('Validation Acc: %.4f, Loss: %.4f'%(acc, loss))
             if opt.use_tb:
-                opt.writer.add_scalar('eval_acc_avg', acc, epoch)
-                opt.writer.add_scalar('eval_loss_avg', loss, epoch)
+                opt.writer.add_scalar('eval_acc_avg', acc, epoch+1)
+                opt.writer.add_scalar('eval_loss_avg', loss, epoch+1)
 
             if acc >= opt.best_acc:
                 if acc == opt.best_acc:

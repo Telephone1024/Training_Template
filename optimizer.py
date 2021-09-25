@@ -6,7 +6,7 @@ def build_optimizer(opt, model):
     if opt.optim == 'sgd':
         optimizer = optim.SGD(
             params=params,
-            momentum=opt.momentun,
+            momentum=opt.momentum,
             nesterov=True,
             lr=opt.lr,
             weight_decay=opt.weight_decay)
