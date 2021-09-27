@@ -39,9 +39,12 @@ def train(opt):
     
     if 0 == opt.local_rank:
         logging.info('Training Starts!')
-        opt.best_acc = 0.
-        opt.best_acc_epoch = 0
-        opt.best_acc_loss = 1e5
+        opt.best_eval_acc = 0.
+        opt.best_eval_acc_epoch = 0
+        opt.best_eval_acc_loss = 1e5
+        opt.best_test_acc = 0.
+        opt.best_test_acc_epoch = 0
+        opt.best_test_acc_loss = 1e5
 
     for epoch in range(opt.num_epochs):
 
@@ -50,32 +53,13 @@ def train(opt):
             save_checkpoint(trainer.model, opt, epoch+1)
 
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.val_interval:        
-            eval_acc, eval_loss = validate(opt, trainer, eval_loader)
-            logging.info('Validation Acc: %.4f, Loss: %.4f'%(eval_acc, eval_loss))
-            if opt.use_tb:
-                opt.writer.add_scalar('Eval_acc_avg', eval_acc, epoch+1)
-                opt.writer.add_scalar('Eval_loss_avg', eval_loss, epoch+1)
+            eval(opt, epoch, trainer, eval_loader)
             if opt.val_test:
-                test_acc, test_loss = validate(opt, trainer, test_loader, stage='Test')
-                logging.info('Test Acc: %.4f, Loss: %.4f'%(test_acc, test_loss))
-                if opt.use_tb:
-                    opt.writer.add_scalar('Test_acc_avg', test_acc, epoch+1)
-                    opt.writer.add_scalar('Test_loss_avg', test_loss, epoch+1)
-
-            if eval_acc >= opt.best_acc:
-                if eval_acc == opt.best_acc:
-                    if eval_loss < opt.best_acc_loss:
-                        opt.best_acc_epoch = epoch
-                        opt.best_acc_loss = eval_loss
-                else:                        
-                    opt.best_acc_epoch = epoch
-                    opt.best_acc_loss = eval_loss
-                opt.best_acc = eval_acc
-
-                save_checkpoint(trainer.model, opt, epoch+1, True)
+                eval(opt, epoch, trainer, test_loader, stage='Test')
     
     if 0 == opt.local_rank:
         logging.info('Training Over!')
+        logging.info('Best Eval Acc is %.5f, Corresponding Epoch is %03d'%(opt.best_eval_acc, opt.best_eval_acc_epoch))
         if opt.use_tb:
             opt.writer.close()
 
@@ -131,6 +115,30 @@ def validate(opt, trainer, data_loader, stage='Eval'):
                 opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, opt.cur_step)
 
     return acc_meter.avg, loss_meter.avg
+
+
+def eval(opt, epoch, trainer, data_loader, stage='Eval'):
+    acc, loss = validate(opt, trainer, data_loader)
+    logging.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
+    if opt.use_tb:
+        opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
+        opt.writer.add_scalar('%s_loss_avg'%(stage), loss, epoch+1)
+    
+    stage = stage.lower()
+    
+    if acc >= opt.__dict__['best_%s_acc'%(stage)]:
+        if acc == opt.__dict__['best_%s_acc'%(stage)]:
+            if loss < opt.__dict__['best_%s_acc_loss'%(stage)]:
+                # if acc is equal, update epoch and loss value if loss is less
+                opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
+                opt.__dict__['best_%s_acc_loss'%(stage)] = loss
+        else:
+            opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
+            opt.__dict__['best_%s_acc_loss'%(stage)] = loss
+        
+        opt.__dict__['best_%s_acc'%(stage)] = acc
+
+        save_checkpoint(trainer.model, opt, epoch+1, True, stage)
 
 
 if __name__=='__main__':

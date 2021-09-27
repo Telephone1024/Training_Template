@@ -4,15 +4,18 @@ import torch
 import torch.distributed as dist
    
 
-def save_checkpoint(model, opt, epoch, is_best=False):
+def save_checkpoint(model, opt, epoch, is_best=False, stage='eval'):
     if hasattr(model, 'module'):
         params = model.module.state_dict()
     else:
         params = model.state_dict()
     logging.info('saving to %s'%(opt.saved_path))
     if is_best:
-        torch.save(params, os.path.join(opt.saved_path, 'ckpt_best.pth'))
-        logging.warning('BEST MODEL IS SAVED!!! CURRENT ACCURACY IS: %.5f'%(opt.best_acc))
+        torch.save(params, os.path.join(opt.saved_path, 'ckpt_%s_best.pth'%(stage)))
+        logging.warning('BEST MODEL IS SAVED!!! CURRENT %s ACCURACY IS: %.5f, EPOCH:%03d'%(
+            stage.upper(),
+            (opt.best_eval_acc, opt.best_eval_acc_epoch) if 'eval' == stage else (opt.best_test_acc, opt.best_test_acc_epoch)
+            ))
     else:
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_epoch_%03d.pth'%(epoch)))
         logging.info('model is saved!')
