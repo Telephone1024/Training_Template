@@ -27,14 +27,8 @@ from utils import lr_adjust, save_checkpoint
 
 def train(opt):
     model = build_model(opt)
-    if opt.resume:
-        model.load_state_dict(torch.load(opt.resume, map_location='cpu'), strict=False)
-        # dist.barrier()
-        if 0 == opt.local_rank:
-            logging.info('Load pretrained weight from %s'%(opt.resume))
-
     criterion = build_criterion(opt)
-    train_loader, eval_loader = build_loader(opt)
+    train_loader, eval_loader, test_loader = build_loader(opt)
     optimizer = build_optimizer(opt, model)
     scheduler = build_scheduler(opt, optimizer, len(train_loader))
 
@@ -56,21 +50,27 @@ def train(opt):
             save_checkpoint(trainer.model, opt, epoch+1)
 
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.val_interval:        
-            acc, loss = validate(opt, trainer, eval_loader)
-            logging.info('Validation Acc: %.4f, Loss: %.4f'%(acc, loss))
+            eval_acc, eval_loss = validate(opt, trainer, eval_loader)
+            logging.info('Validation Acc: %.4f, Loss: %.4f'%(eval_acc, eval_loss))
             if opt.use_tb:
-                opt.writer.add_scalar('eval_acc_avg', acc, epoch+1)
-                opt.writer.add_scalar('eval_loss_avg', loss, epoch+1)
+                opt.writer.add_scalar('Eval_acc_avg', eval_acc, epoch+1)
+                opt.writer.add_scalar('Eval_loss_avg', eval_loss, epoch+1)
+            if opt.val_test:
+                test_acc, test_loss = validate(opt, trainer, test_loader, stage='Test')
+                logging.info('Test Acc: %.4f, Loss: %.4f'%(test_acc, test_loss))
+                if opt.use_tb:
+                    opt.writer.add_scalar('Test_acc_avg', test_acc, epoch+1)
+                    opt.writer.add_scalar('Test_loss_avg', test_loss, epoch+1)
 
-            if acc >= opt.best_acc:
-                if acc == opt.best_acc:
-                    if loss < opt.best_acc_loss:
+            if eval_acc >= opt.best_acc:
+                if eval_acc == opt.best_acc:
+                    if eval_loss < opt.best_acc_loss:
                         opt.best_acc_epoch = epoch
-                        opt.best_acc_loss = loss
+                        opt.best_acc_loss = eval_loss
                 else:                        
                     opt.best_acc_epoch = epoch
-                    opt.best_acc_loss = loss
-                opt.best_acc = acc
+                    opt.best_acc_loss = eval_loss
+                opt.best_acc = eval_acc
 
                 save_checkpoint(trainer.model, opt, epoch+1, True)
     
@@ -103,11 +103,11 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
                 f'mem {memory_used:.0f}MB')
             if opt.use_tb:
                 opt.writer.add_scalar('lr', curr_lr, opt.cur_step)
-                opt.writer.add_scalar('train_loss', loss_meter.val, opt.cur_step)
+                opt.writer.add_scalar('Train_loss', loss_meter.val, opt.cur_step)
 
 
 @torch.no_grad()
-def validate(opt, trainer, data_loader):
+def validate(opt, trainer, data_loader, stage='Eval'):
     torch.cuda.empty_cache()
 
     acc_meter = AverageMeter()
@@ -122,13 +122,13 @@ def validate(opt, trainer, data_loader):
         if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
             memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             logging.info(
-                f'Test: [{iter+1:04d}/{len(data_loader):04d}]\t'
+                f'{stage}: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})\t'
                 f'Mem {memory_used:.0f}MB')
             if opt.use_tb:
-                opt.writer.add_scalar('eval_loss', loss_meter.val, opt.cur_step)
-                opt.writer.add_scalar('eval_acc', acc_meter.val, opt.cur_step)
+                opt.writer.add_scalar('%s_loss'%(stage), loss_meter.val, opt.cur_step)
+                opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, opt.cur_step)
 
     return acc_meter.avg, loss_meter.avg
 

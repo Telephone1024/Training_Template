@@ -14,6 +14,9 @@ def get_config():
     parser.add_argument('--data_path', type=str,
                         default='',
                         help='Path to dataset')
+    parser.add_argument('--val_test', type=bool,
+                        default=False,
+                        help='Whether to validate with test set')
     parser.add_argument('--img_size', type=int,
                         default=224,
                         help='Input image size')
@@ -23,7 +26,7 @@ def get_config():
     parser.add_argument('--pin_memory', type=bool,
                         default=True,
                         help='Set for more efficient (sometimes) transfer to GPU.')
-    # # Data augment setting
+    # # Data augment settings
     # TODO
 
     
@@ -33,7 +36,7 @@ def get_config():
     parser.add_argument('--num_classes', type=int,
                         default=2)
     parser.add_argument('--resume', type=str,
-                        # default='',
+                        default=None,
                         help='Checkpoint to resume')
     
 
@@ -108,5 +111,5 @@ def get_config():
                         default=50,
                         help='Interval between logging')
     
-    args = parser.parse_args()
-    return args
+    config = parser.parse_args()
+    return config

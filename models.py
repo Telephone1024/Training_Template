@@ -68,6 +68,12 @@ def build_model(opt):
         logging.info('Model is built!')
         if opt.use_tb:
             opt.writer.add_graph(net, torch.randn(2, 3, opt.img_size, opt.img_size))
+    if opt.resume:
+        net.load_state_dict(torch.load(opt.resume, map_location='cpu'), strict=False)
+        # dist.barrier()
+        if 0 == opt.local_rank:
+            logging.info('Load pretrained weight from %s'%(opt.resume))
+
     return net
 
 

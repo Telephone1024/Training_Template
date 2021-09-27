@@ -29,13 +29,18 @@ def build_loader(opt):
                             sampler=train_sampler, pin_memory=opt.pin_memory)
 
     eval_loader = None
+    test_loader = None
 
     if 0 == opt.local_rank:
         eval_set = Dataset()
         eval_loader = DataLoader(eval_set, batch_size=opt.batch_size*4, shuffle=True, 
                                 num_workers=opt.num_workers, pin_memory=opt.pin_memory)
+        if opt.val_test:
+            test_set = Dataset()
+            test_loader = DataLoader(test_set, batch_size=opt.batch_size*4, shuffle=True, 
+                                    num_workers=opt.num_workers, pin_memory=opt.pin_memory)
     
-    return train_loader, eval_loader
+    return train_loader, eval_loader, test_loader
 
 
 if __name__ == '__main__':

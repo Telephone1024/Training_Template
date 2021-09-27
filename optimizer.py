@@ -1,5 +1,16 @@
 from torch import optim
 
+
+# Implement your parameters settings here
+# Set different learning rates and weight decays for parameters in the model according to the config
+# Return the list of parameter dicts
+def set_params(model, opt):
+    if 'finetune' == opt.train_stage:
+        return model.parameters()
+    
+    pass
+
+
 def build_optimizer(opt, model):
     params = set_params(model, opt)
 
@@ -19,10 +30,3 @@ def build_optimizer(opt, model):
             weight_decay=opt.weight_decay)
     
     return optimizer
-
-
-# Implement your parameters settings here
-# Set different learning rates and weight decays for parameters in the model according to the config
-# Return the list of parameter dicts
-def set_params(model, opt):
-    pass

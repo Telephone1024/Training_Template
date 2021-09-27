@@ -18,13 +18,6 @@ def save_checkpoint(model, opt, epoch, is_best=False):
         logging.info('model is saved!')
 
 
-def reduce_tensor(tensor):
-    rt = tensor.clone()
-    dist.all_reduce(rt, op=dist.ReduceOp.SUM)
-    rt /= dist.get_world_size()
-    return rt
-
-
 def lr_adjust(opt):
     # linear scale the learning rate according to total batch size, may not be optimal
     linear_scaled_lr = opt.lr * opt.batch_size * dist.get_world_size() / opt.total_batch_size
