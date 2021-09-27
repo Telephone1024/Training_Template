@@ -78,13 +78,11 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
         loss_meter.update(loss, n)
 
         if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
-            memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             curr_lr = trainer.optimizer.param_groups[0]['lr']
             logging.info(
                 f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t'
                 f'lr {curr_lr:.4e}\t'
-                f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
-                f'mem {memory_used:.0f}MB')
+                f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})')
             if opt.use_tb:
                 opt.writer.add_scalar('lr', curr_lr, opt.cur_step)
                 opt.writer.add_scalar('Train_loss', loss_meter.val, opt.cur_step)
@@ -104,12 +102,10 @@ def validate(opt, trainer, data_loader, stage='Eval'):
         loss_meter.update(loss, n)
 
         if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
-            memory_used = torch.cuda.max_memory_allocated() / (1024.0 * 1024.0)
             logging.info(
                 f'{stage}: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
-                f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})\t'
-                f'Mem {memory_used:.0f}MB')
+                f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})')
             if opt.use_tb:
                 opt.writer.add_scalar('%s_loss'%(stage), loss_meter.val, opt.cur_step)
                 opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, opt.cur_step)
