@@ -107,8 +107,11 @@ def get_config():
     parser.add_argument('--save_interval', type=int,
                         default=10,
                         help='Interval between saving checkpoints')
-    parser.add_argument('--print_interval', type=int,
-                        default=50,
+    parser.add_argument('--train_print_fre', type=int,
+                        default=30,
+                        help='Interval between logging')
+    parser.add_argument('--val_print_fre', type=int,
+                        default=5,
                         help='Interval between logging')
     
     config = parser.parse_args()

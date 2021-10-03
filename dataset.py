@@ -28,19 +28,21 @@ def build_loader(opt):
                             drop_last=False, num_workers=opt.num_workers, 
                             sampler=train_sampler, pin_memory=opt.pin_memory)
 
-    eval_loader = None
-    test_loader = None
-
-    if 0 == opt.local_rank:
-        eval_set = Dataset()
-        eval_loader = DataLoader(eval_set, batch_size=opt.batch_size*4, shuffle=True, 
-                                num_workers=opt.num_workers, pin_memory=opt.pin_memory)
-        if opt.val_test:
-            test_set = Dataset()
-            test_loader = DataLoader(test_set, batch_size=opt.batch_size*4, shuffle=True, 
-                                    num_workers=opt.num_workers, pin_memory=opt.pin_memory)
+    eval_set = Dataset()
+    eval_sampler = torch.utils.data.distributed.DistributedSampler(eval_set)
+    eval_loader = DataLoader(eval_set, batch_size=opt.batch_size*4, shuffle=False, 
+                            drop_last=False, num_workers=opt.num_workers,
+                            sampler=eval_sampler, pin_memory=opt.pin_memory)
     
-    return train_loader, eval_loader, test_loader
+    test_loader = None
+    if opt.val_test:
+        test_set = Dataset()
+        test_sampler = torch.utils.data.distributed.DistributedSampler(test_set)
+        test_loader = DataLoader(test_set, batch_size=opt.batch_size*4, shuffle=False, 
+                                drop_last=False, num_workers=opt.num_workers,
+                                sampler=test_sampler, pin_memory=opt.pin_memory)
+    
+    return train_loader, train_sampler, eval_loader, test_loader
 
 
 if __name__ == '__main__':

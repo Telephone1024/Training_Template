@@ -1,5 +1,4 @@
 import logging
-import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,6 +41,8 @@ class Trainer(nn.Module):
         loss = self.criterion(outputs, targets)
         
         loss.backward()
+        if opt.clip_grad:
+            grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), opt.clip_grad)
         self.optimizer.step()
         self.scheduler.step_update(opt.cur_step) # modify this line if plateau scheduler is adopted
 

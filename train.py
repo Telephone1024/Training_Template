@@ -13,7 +13,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
 from torch.utils.tensorboard import SummaryWriter
-from timm.utils import accuracy, AverageMeter
+from timm.utils import accuracy, AverageMeter, reduce_tensor
 
 # Implement your training settinga and model(s) in these files
 from config import get_config
@@ -28,7 +28,7 @@ from utils import lr_adjust, save_checkpoint
 def train(opt):
     model = build_model(opt)
     criterion = build_criterion(opt)
-    train_loader, eval_loader, test_loader = build_loader(opt)
+    train_loader, train_sampler, eval_loader, test_loader = build_loader(opt)
     optimizer = build_optimizer(opt, model)
     scheduler = build_scheduler(opt, optimizer, len(train_loader))
 
@@ -42,12 +42,14 @@ def train(opt):
         opt.best_eval_acc = 0.
         opt.best_eval_acc_epoch = 0
         opt.best_eval_acc_loss = 1e5
-        opt.best_test_acc = 0.
-        opt.best_test_acc_epoch = 0
-        opt.best_test_acc_loss = 1e5
+        if opt.val_test:
+            opt.best_test_acc = 0.
+            opt.best_test_acc_epoch = 0
+            opt.best_test_acc_loss = 1e5
 
     for epoch in range(opt.num_epochs):
-
+        # through set_epoch function , sampler can shuffle the data on each process
+        train_sampler.set_epoch(epoch)
         train_one_epoch(opt, epoch, trainer, train_loader)
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.save_interval:
             save_checkpoint(trainer.model, opt, epoch+1)
@@ -77,7 +79,7 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
         loss_meter.update(loss, n)
 
-        if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
+        if 0 == opt.local_rank and 0 == (iter+1)%opt.train_print_fre:
             curr_lr = trainer.optimizer.param_groups[0]['lr']
             logging.info(
                 f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t'
@@ -89,32 +91,36 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
 
 @torch.no_grad()
-def validate(opt, trainer, data_loader, stage='Eval'):
+def validate(opt, epoch, trainer, data_loader, stage='Eval'):
     torch.cuda.empty_cache()
 
     acc_meter = AverageMeter()
     loss_meter = AverageMeter()
+    
 
     for iter, data in enumerate(data_loader):
         acc, loss, n = trainer.pred(data, opt)
         # acc = accuracy()
+        acc = reduce_tensor(acc, dist.get_world_size())
+        loss = reduce_tensor(loss, dist.get_world_size())
+
         acc_meter.update(acc, n)
         loss_meter.update(loss, n)
 
-        if 0 == opt.local_rank and 0 == (iter+1)%opt.print_interval:
+        if 0 == opt.local_rank and 0 == (iter+1)%opt.val_print_fre:
             logging.info(
                 f'{stage}: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})')
             if opt.use_tb:
-                opt.writer.add_scalar('%s_loss'%(stage), loss_meter.val, opt.cur_step)
-                opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, opt.cur_step)
+                opt.writer.add_scalar('%s_loss'%(stage), loss_meter.val, iter + epoch*len(data_loader))
+                opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, iter + epoch*len(data_loader))
 
     return acc_meter.avg, loss_meter.avg
 
 
 def eval(opt, epoch, trainer, data_loader, stage='Eval'):
-    acc, loss = validate(opt, trainer, data_loader)
+    acc, loss = validate(opt, epoch, trainer, data_loader)
     logging.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
     if opt.use_tb:
         opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
