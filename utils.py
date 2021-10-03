@@ -12,9 +12,8 @@ def save_checkpoint(model, opt, epoch, is_best=False, stage='eval'):
     logging.info('saving to %s'%(opt.saved_path))
     if is_best:
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_%s_best.pth'%(stage)))
-        logging.warning('BEST MODEL IS SAVED!!! CURRENT %s ACCURACY IS: %.5f, EPOCH:%03d'%(
-            stage.upper(),
-            (opt.best_eval_acc, opt.best_eval_acc_epoch) if 'eval' == stage else (opt.best_test_acc, opt.best_test_acc_epoch)
+        logging.warning('BEST MODEL IS SAVED!!! CURRENT %s ACCURACY IS: %.5f, EPOCH: %03d'%(            
+            (stage.upper(), opt.best_eval_acc, opt.best_eval_acc_epoch) if 'eval' == stage else (stage.upper(), opt.best_test_acc, opt.best_test_acc_epoch)
             ))
     else:
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_epoch_%03d.pth'%(epoch)))

@@ -54,7 +54,7 @@ def train(opt):
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.save_interval:
             save_checkpoint(trainer.model, opt, epoch+1)
 
-        if 0 == opt.local_rank and 0 == (epoch+1)%opt.val_interval:        
+        if 0 == (epoch+1)%opt.val_interval:        
             eval(opt, epoch, trainer, eval_loader)
             if opt.val_test:
                 eval(opt, epoch, trainer, test_loader, stage='Test')
@@ -100,9 +100,6 @@ def validate(opt, epoch, trainer, data_loader, stage='Eval'):
 
     for iter, data in enumerate(data_loader):
         acc, loss, n = trainer.pred(data, opt)
-        # acc = accuracy()
-        acc = reduce_tensor(acc, dist.get_world_size())
-        loss = reduce_tensor(loss, dist.get_world_size())
 
         acc_meter.update(acc, n)
         loss_meter.update(loss, n)
@@ -120,27 +117,28 @@ def validate(opt, epoch, trainer, data_loader, stage='Eval'):
 
 
 def eval(opt, epoch, trainer, data_loader, stage='Eval'):
-    acc, loss = validate(opt, epoch, trainer, data_loader)
-    logging.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
-    if opt.use_tb:
-        opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
-        opt.writer.add_scalar('%s_loss_avg'%(stage), loss, epoch+1)
+    acc, loss = validate(opt, epoch, trainer, data_loader, stage)
+    if 0 == opt.local_rank:
+        logging.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
+        if opt.use_tb:
+            opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
+            opt.writer.add_scalar('%s_loss_avg'%(stage), loss, epoch+1)
     
-    stage = stage.lower()
-    
-    if acc >= opt.__dict__['best_%s_acc'%(stage)]:
-        if acc == opt.__dict__['best_%s_acc'%(stage)]:
-            if loss < opt.__dict__['best_%s_acc_loss'%(stage)]:
-                # if acc is equal, update epoch and loss value if loss is less
+        stage = stage.lower()
+        
+        if acc >= opt.__dict__['best_%s_acc'%(stage)]:
+            if acc == opt.__dict__['best_%s_acc'%(stage)]:
+                if loss < opt.__dict__['best_%s_acc_loss'%(stage)]:
+                    # if acc is equal, update epoch and loss value if loss is less
+                    opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
+                    opt.__dict__['best_%s_acc_loss'%(stage)] = loss
+            else:
                 opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
                 opt.__dict__['best_%s_acc_loss'%(stage)] = loss
-        else:
-            opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
-            opt.__dict__['best_%s_acc_loss'%(stage)] = loss
-        
-        opt.__dict__['best_%s_acc'%(stage)] = acc
+            
+            opt.__dict__['best_%s_acc'%(stage)] = acc
 
-        save_checkpoint(trainer.model, opt, epoch+1, True, stage)
+            save_checkpoint(trainer.model, opt, epoch+1, True, stage)
 
 
 if __name__=='__main__':

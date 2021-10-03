@@ -2,8 +2,9 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.distributed as dist
 
-from timm.utils import accuracy, AverageMeter
+from timm.utils import accuracy, AverageMeter, reduce_tensor
 
 
 # Implement your model here
@@ -55,9 +56,12 @@ class Trainer(nn.Module):
         
         inputs, targets = self._decode_data(data, opt)
         outputs = self.model(inputs)
-        loss = self.criterion(outputs, targets)
 
+        loss = self.criterion(outputs, targets)
         acc = accuracy(outputs, targets)[0]
+
+        acc = reduce_tensor(acc, dist.get_world_size())
+        loss = reduce_tensor(loss, dist.get_world_size())
 
         return acc, loss.item(), targets.shape[0]
 
