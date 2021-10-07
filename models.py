@@ -1,4 +1,3 @@
-import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -70,14 +69,14 @@ def build_model(opt):
     net = Model()
     # net can be any other models you want
     if 0 == opt.local_rank:
-        logging.info('Model is built!')
+        opt.logger.info('Model is built!')
         if opt.use_tb:
             opt.writer.add_graph(net, torch.randn(2, 3, opt.img_size, opt.img_size))
     if opt.resume:
         net.load_state_dict(torch.load(opt.resume, map_location='cpu'), strict=False)
         # dist.barrier()
         if 0 == opt.local_rank:
-            logging.info('Load pretrained weight from %s'%(opt.resume))
+            opt.logger.info('Load pretrained weight from %s'%(opt.resume))
 
     return net
 

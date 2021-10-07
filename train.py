@@ -3,9 +3,6 @@ Written by Telephone1024
 2021/09/24
 # This part needs no modification if not necessary #
 '''
-
-
-import logging
 import os
 import torch
 import torch.nn as nn
@@ -22,7 +19,7 @@ from loss import build_criterion
 from dataset import build_loader
 from optimizer import build_optimizer
 from scheduler import build_scheduler
-from utils import lr_adjust, save_checkpoint
+from utils import build_logger, lr_adjust, save_checkpoint
 
 
 def train(opt):
@@ -38,7 +35,7 @@ def train(opt):
     trainer = build_trainer(model, criterion, optimizer, scheduler, opt)
     
     if 0 == opt.local_rank:
-        logging.info('Training Starts!')
+        opt.logger.info('Training Starts!')
         opt.best_eval_acc = 0.
         opt.best_eval_acc_epoch = 0
         opt.best_eval_acc_loss = 1e5
@@ -60,13 +57,14 @@ def train(opt):
                 eval(opt, epoch, trainer, test_loader, stage='Test')
     
     if 0 == opt.local_rank:
-        logging.info('Training Over!')
-        logging.info('Best Eval Acc is %.5f, Corresponding Epoch is %03d'%(opt.best_eval_acc, opt.best_eval_acc_epoch))
+        opt.logger.info('Training Over!')
+        opt.logger.info('Best Eval Acc is %.5f, Corresponding Epoch is %03d'%(opt.best_eval_acc, opt.best_eval_acc_epoch))
         if opt.use_tb:
             opt.writer.close()
 
 
 def train_one_epoch(opt, epoch, trainer, data_loader):
+    torch.cuda.empty_cache()
 
     loss_meter = AverageMeter()
 
@@ -81,7 +79,7 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
         if 0 == opt.local_rank and 0 == (iter+1)%opt.train_print_fre:
             curr_lr = trainer.optimizer.param_groups[0]['lr']
-            logging.info(
+            opt.logger.info(
                 f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t'
                 f'lr {curr_lr:.4e}\t'
                 f'loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})')
@@ -105,13 +103,10 @@ def validate(opt, epoch, trainer, data_loader, stage='Eval'):
         loss_meter.update(loss, n)
 
         if 0 == opt.local_rank and 0 == (iter+1)%opt.val_print_fre:
-            logging.info(
+            opt.logger.info(
                 f'{stage}: [{iter+1:04d}/{len(data_loader):04d}]\t'
                 f'Loss {loss_meter.val:.4f} ({loss_meter.avg:.4f})\t'
                 f'Acc {acc_meter.val:.4f} ({acc_meter.avg:.4f})')
-            if opt.use_tb:
-                opt.writer.add_scalar('%s_loss'%(stage), loss_meter.val, iter + epoch*len(data_loader))
-                opt.writer.add_scalar('%s_acc'%(stage), acc_meter.val, iter + epoch*len(data_loader))
 
     return acc_meter.avg, loss_meter.avg
 
@@ -119,7 +114,7 @@ def validate(opt, epoch, trainer, data_loader, stage='Eval'):
 def eval(opt, epoch, trainer, data_loader, stage='Eval'):
     acc, loss = validate(opt, epoch, trainer, data_loader, stage)
     if 0 == opt.local_rank:
-        logging.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
+        opt.logger.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
         if opt.use_tb:
             opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
             opt.writer.add_scalar('%s_loss_avg'%(stage), loss, epoch+1)
@@ -159,15 +154,11 @@ if __name__=='__main__':
         import time
         saved_path = os.path.join(opt.saved_path, time.strftime('%m-%d-%H:%M', time.localtime()))
         os.makedirs(saved_path, exist_ok=True)
-        logging.basicConfig(
-            filename=os.path.join(saved_path, 'run.log'),
-            filemode='w',
-            format='%(asctime)s: %(levelname)s: [%(filename)s:%(lineno)d]: %(message)s',
-            level=logging.INFO
-        )
-        os.system('cp config.py %s'%(saved_path))
-        logging.info('Training config saved to %s'%(saved_path))
         opt.saved_path = saved_path
+        # build logger export to console and file
+        opt.logger = build_logger(opt)
+        os.system('cp config.py %s'%(saved_path))
+        opt.logger.info('Training config saved to %s'%(saved_path))
         if opt.use_tb:
             opt.writer = SummaryWriter(os.path.join(opt.saved_path, 'tensorboard'))         
 

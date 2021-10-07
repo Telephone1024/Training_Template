@@ -1,7 +1,10 @@
 import logging
 import os
+import functools
 import torch
 import torch.distributed as dist
+
+from termcolor import colored
    
 
 def save_checkpoint(model, opt, epoch, is_best=False, stage='eval'):
@@ -31,3 +34,31 @@ def lr_adjust(opt):
     opt.min_lr = linear_scaled_min_lr
 
     return opt
+
+
+@functools.lru_cache()
+def build_logger(opt):
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+
+    format = colored('%(asctime)s', 'green') + \
+             colored('[%(filename)s %(lineno)d]', 'yellow') +\
+             ': %(levelname)s %(message)s'
+
+    con_handler = logging.StreamHandler()
+    con_handler.setLevel(logging.DEBUG)
+    con_handler.setFormatter(
+        logging.Formatter(fmt=format, datefmt='%Y-%m-%d %H:%M:%S')
+    )
+
+    file_handler = logging.FileHandler(os.path.join(opt.saved_path, 'run.log'))
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(
+        logging.Formatter(fmt=format, datefmt='%Y-%m-%d %H:%M:%S')
+    )
+
+    logger.addHandler(con_handler)
+    logger.addHandler(file_handler)
+    
+    return logger
