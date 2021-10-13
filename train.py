@@ -47,14 +47,14 @@ def train(opt):
         # through set_epoch function , sampler can shuffle the data on each process
         train_sampler.set_epoch(epoch)
         opt.cur_epoch = epoch
-        train_one_epoch(opt, epoch, trainer, train_loader)
+        train_one_epoch(opt, trainer, train_loader)
         if 0 == opt.local_rank and 0 == (epoch+1)%opt.save_interval:
             save_checkpoint(trainer.model, opt, epoch+1)
 
         if 0 == (epoch+1)%opt.val_interval:        
-            validate(opt, epoch, trainer, val_loader)
+            validate(opt, trainer, val_loader)
             if opt.val_test:
-                validate(opt, epoch, trainer, test_loader, stage='Test')
+                validate(opt, trainer, test_loader, stage='Test')
     
     if 0 == opt.local_rank:
         opt.logger.info('Training Over!')
@@ -63,13 +63,13 @@ def train(opt):
             opt.writer.close()
 
 
-def train_one_epoch(opt, epoch, trainer, data_loader):
+def train_one_epoch(opt, trainer, data_loader):
     torch.cuda.empty_cache()
 
     trainer.reset_meter()
 
     for iter, data in enumerate(data_loader):
-        opt.cur_step = iter + epoch*len(data_loader)
+        opt.cur_step = iter + opt.cur_epoch*len(data_loader)
 
         _, loss = trainer.step(data, opt)
 
@@ -83,7 +83,7 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
                 loss_msg += f'\t{loss_name} {loss_val[0]:.4f} ({loss_val[1]:.4f})'
                 loss[loss_name] = loss_val[0] # For tensorboard
             opt.logger.info(
-                f'Train: [{epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t' + 
+                f'Train: [{opt.cur_epoch+1:03d}/{opt.num_epochs:03d}][{iter+1:03d}/{len(data_loader):03d}]\t' + 
                 f'lr {curr_lr:.4e}' +
                 loss_msg)
             if opt.use_tb:
@@ -92,7 +92,7 @@ def train_one_epoch(opt, epoch, trainer, data_loader):
 
 
 @torch.no_grad()
-def validate(opt, epoch, trainer, data_loader, stage='Val'):
+def validate(opt, trainer, data_loader, stage='Val'):
     torch.cuda.empty_cache()
     trainer.reset_meter()
 
@@ -115,24 +115,25 @@ def validate(opt, epoch, trainer, data_loader, stage='Val'):
     if 0 == opt.local_rank:
         opt.logger.info('%s Average Acc: %.4f, Loss: %.4f'%(stage, acc, loss))
         if opt.use_tb:
-            opt.writer.add_scalar('%s_acc_avg'%(stage), acc, epoch+1)
-            opt.writer.add_scalars('%s_loss_avg'%(stage), loss, epoch+1)
+            opt.writer.add_scalar('%s_acc_avg'%(stage), acc, opt.cur_epoch+1)
+            opt.writer.add_scalars('%s_loss_avg'%(stage), loss, opt.cur_epoch+1)
     
         stage = stage.lower()
         
+        # Update best acc in stage validate or test here
         if acc >= opt.__dict__['best_%s_acc'%(stage)]:
             if acc == opt.__dict__['best_%s_acc'%(stage)]:
                 if loss < opt.__dict__['best_%s_acc_loss'%(stage)]:
-                    # if acc is equal, update epoch and loss value if loss is less
-                    opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
+                    # if acc is equal, update opt.cur_epoch and loss value if loss is less
+                    opt.__dict__['best_%s_acc_epoch'%(stage)] = opt.cur_epoch
                     opt.__dict__['best_%s_acc_loss'%(stage)] = loss
             else:
-                opt.__dict__['best_%s_acc_epoch'%(stage)] = epoch
+                opt.__dict__['best_%s_acc_epoch'%(stage)] = opt.cur_epoch
                 opt.__dict__['best_%s_acc_loss'%(stage)] = loss
             
             opt.__dict__['best_%s_acc'%(stage)] = acc
 
-            save_checkpoint(trainer.model, opt, epoch+1, True, stage)
+            save_checkpoint(trainer.model, opt, opt.cur_epoch+1, True, stage)
 
 
 if __name__=='__main__':

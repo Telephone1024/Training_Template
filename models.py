@@ -51,7 +51,7 @@ class Trainer(nn.Module):
         
         loss[0].backward()
         if opt.clip_grad:
-            grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), opt.clip_grad)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), opt.clip_grad)
         self.optimizer.step()
         if not 'plateau' == opt.sche_type:
             self.scheduler.step_update(opt.cur_step)
