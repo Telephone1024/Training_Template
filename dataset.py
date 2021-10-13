@@ -28,11 +28,11 @@ def build_loader(opt):
                             drop_last=False, num_workers=opt.num_workers, 
                             sampler=train_sampler, pin_memory=opt.pin_memory)
 
-    eval_set = Dataset()
-    eval_sampler = torch.utils.data.distributed.DistributedSampler(eval_set)
-    eval_loader = DataLoader(eval_set, batch_size=opt.batch_size*4, shuffle=False, 
+    val_set = Dataset()
+    val_sampler = torch.utils.data.distributed.DistributedSampler(val_set)
+    val_loader = DataLoader(val_set, batch_size=opt.batch_size*4, shuffle=False, 
                             drop_last=False, num_workers=opt.num_workers,
-                            sampler=eval_sampler, pin_memory=opt.pin_memory)
+                            sampler=val_sampler, pin_memory=opt.pin_memory)
     
     test_loader = None
     if opt.val_test:
@@ -42,7 +42,7 @@ def build_loader(opt):
                                 drop_last=False, num_workers=opt.num_workers,
                                 sampler=test_sampler, pin_memory=opt.pin_memory)
     
-    return train_loader, train_sampler, eval_loader, test_loader
+    return train_loader, train_sampler, val_loader, test_loader
 
 
 if __name__ == '__main__':

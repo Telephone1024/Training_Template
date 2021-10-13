@@ -4,12 +4,12 @@ import torch.nn as nn
 
 
 # Implement your loss here
-# In your loss, it return a list of various loss
 class Loss(nn.Module):
     def __init__(self):
         super().__init__()
     
     def forward(self, outputs, targets):
+        # In your loss, it return a list of various loss
         pass
 
 

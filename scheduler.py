@@ -16,7 +16,7 @@ def build_scheduler(opt, optimizer, iters_per_epoch):
     elif 'step' == opt.sche_type:
         scheduler = sche.StepLRScheduler(
             optimizer=optimizer,
-            decay_t=opt.num_decay_epochs * iters_per_epoch,
+            decay_t=opt.decay_epochs * iters_per_epoch,
             decay_rate=opt.decay_rate,
             warmup_lr_init=opt.warmup_lr,
             warmup_t=opt.num_warmup_epochs * iters_per_epoch,

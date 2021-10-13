@@ -1,3 +1,4 @@
+from typing import OrderedDict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,11 +25,19 @@ class Trainer(nn.Module):
         self.scheduler = scheduler
         self.device = model.device
 
+        self.acc_meter = AverageMeter()
+        # define your loss here, the first one is sum of loss, others are details
+        self.loss_meter = [AverageMeter(), AverageMeter(), AverageMeter()]
 
     def _decode_data(self, data, opt):
         # Decode the data from loader, data is always a tuple of X, y
-        pass        
+        pass
 
+    def _decode_loss(self, all_loss, n):
+        assert isinstance(all_loss, tuple)
+        for i in len(self.loss_meter):
+            loss = reduce_tensor(all_loss[i].item(), dist.get_world_size())
+            self.loss_meter.update(loss, n)
 
     def step(self, data, opt):
         self.model.train()
@@ -40,30 +49,49 @@ class Trainer(nn.Module):
         outputs = self.model(inputs)
         loss = self.criterion(outputs, targets)
         
-        loss.backward()
+        loss[0].backward()
         if opt.clip_grad:
             grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), opt.clip_grad)
         self.optimizer.step()
-        self.scheduler.step_update(opt.cur_step) # modify this line if plateau scheduler is adopted
+        if not 'plateau' == opt.sche_type:
+            self.scheduler.step_update(opt.cur_step)
 
-        return loss.item(), targets.shape[0]
-        
+        return self.get_meter()
 
     @torch.no_grad()
-    def pred(self, data, opt):
+    def val(self, data, opt, stage):
         self.model.eval()
         
         inputs, targets = self._decode_data(data, opt)
         outputs = self.model(inputs)
 
         loss = self.criterion(outputs, targets)
+
+        self._decode_loss(loss, targets.shape[0])
+
         acc = accuracy(outputs, targets)[0]
-
         acc = reduce_tensor(acc, dist.get_world_size())
-        loss = reduce_tensor(loss, dist.get_world_size())
+        if 'plateau' == opt.sche_type and 'Val' == stage:
+            self.scheduler.step(opt.cur_epoch, acc)
+        self.acc_meter.update(acc, targets.shape[0])
+        
+        return self.get_meter()
 
-        return acc, loss.item(), targets.shape[0]
+    def reset_meter(self):
+        self.acc_meter.reset()
+        for i in len(self.loss_meter):
+            self.loss_meter.reset()
 
+    def get_meter(self):
+        # define your loss names here
+        loss_name = ['total_loss', 'loss_1', 'loss_2']
+        loss = OrderedDict()
+        # ret.update({'acc':(self.acc_meter.val, self.acc_meter.avg)})
+        for i in len(self.loss_meter):
+            loss.update({loss_name[i]:(self.loss_meter[i].val, self.loss_meter[i].avg)})
+        
+        return (self.acc_meter.val, self.acc_meter.avg), loss
+        
 
 def build_model(opt):
     net = Model()

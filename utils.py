@@ -7,20 +7,20 @@ import torch.distributed as dist
 from termcolor import colored
    
 
-def save_checkpoint(model, opt, epoch, is_best=False, stage='eval'):
+def save_checkpoint(model, opt, epoch, is_best=False, stage='val'):
     if hasattr(model, 'module'):
         params = model.module.state_dict()
     else:
         params = model.state_dict()
-    logging.info('saving to %s'%(opt.saved_path))
+    opt.logger.info('saving to %s'%(opt.saved_path))
     if is_best:
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_%s_best.pth'%(stage)))
-        logging.warning('BEST MODEL IS SAVED!!! CURRENT %s ACCURACY IS: %.5f, EPOCH: %03d'%(            
-            (stage.upper(), opt.best_eval_acc, opt.best_eval_acc_epoch) if 'eval' == stage else (stage.upper(), opt.best_test_acc, opt.best_test_acc_epoch)
+        opt.logger.warning('BEST MODEL IS SAVED!!! CURRENT %s ACCURACY IS: %.5f, EPOCH: %03d'%(            
+            (stage.upper(), opt.best_val_acc, opt.best_val_acc_epoch+1) if 'val' == stage else (stage.upper(), opt.best_test_acc, opt.best_test_acc_epoch+1)
             ))
     else:
         torch.save(params, os.path.join(opt.saved_path, 'ckpt_epoch_%03d.pth'%(epoch)))
-        logging.info('model is saved!')
+        opt.logger.info('model is saved!')
 
 
 def lr_adjust(opt):
@@ -37,23 +37,24 @@ def lr_adjust(opt):
 
 
 @functools.lru_cache()
-def build_logger(opt):
+def build_logger(saved_path):
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logger.propagate = False
 
-    format = colored('%(asctime)s', 'green') + \
-             colored('[%(filename)s %(lineno)d]', 'yellow') +\
-             ': %(levelname)s %(message)s'
+    format = '%(asctime)s %(levelname)s [%(filename)s %(lineno)d]\t:\t%(message)s'
+    colored_format = colored('%(asctime)s ', 'green') + '%(levelname)s' + \
+             colored('[%(filename)s %(lineno)d]\t', 'yellow') +\
+             ': \t%(message)s'
 
     con_handler = logging.StreamHandler()
-    con_handler.setLevel(logging.DEBUG)
+    con_handler.setLevel(logging.INFO)
     con_handler.setFormatter(
-        logging.Formatter(fmt=format, datefmt='%Y-%m-%d %H:%M:%S')
+        logging.Formatter(fmt=colored_format, datefmt='%Y-%m-%d %H:%M:%S')
     )
 
-    file_handler = logging.FileHandler(os.path.join(opt.saved_path, 'run.log'))
-    file_handler.setLevel(logging.DEBUG)
+    file_handler = logging.FileHandler(os.path.join(saved_path, 'run.log'))
+    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(
         logging.Formatter(fmt=format, datefmt='%Y-%m-%d %H:%M:%S')
     )
