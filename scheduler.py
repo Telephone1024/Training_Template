@@ -27,7 +27,7 @@ def build_scheduler(opt, optimizer, iters_per_epoch):
             optimizer=optimizer,
             decay_rate=opt.decay_rate,
             patience_t=opt.patience,
-            warmup_t=opt.num_warmup_epochs * iters_per_epoch,
+            warmup_t=opt.num_warmup_epochs,
             warmup_lr_init=opt.warmup_lr,
             lr_min=opt.min_lr,
             mode='min',
